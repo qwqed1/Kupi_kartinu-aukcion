@@ -1,0 +1,25 @@
+# Dependencies and build output
+node_modules/
+.next/
+out/
+coverage/
+.tmp/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# WordPress runtime data
+apps/wordpress/.data/
+apps/wordpress/uploads/
+
+# Logs and editor/OS files
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

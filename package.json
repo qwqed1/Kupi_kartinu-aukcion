@@ -1,0 +1,18 @@
+{
+  "name": "kupi-kartinu-auction",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix apps/frontend run dev",
+    "build": "npm --prefix apps/frontend run build",
+    "lint": "npm --prefix apps/frontend run lint",
+    "frontend:dev": "npm --prefix apps/frontend run dev",
+    "wordpress:up": "docker compose --env-file apps/wordpress/.env -f apps/wordpress/compose.yaml up -d",
+    "wordpress:down": "docker compose --env-file apps/wordpress/.env -f apps/wordpress/compose.yaml down",
+    "wordpress:logs": "docker compose --env-file apps/wordpress/.env -f apps/wordpress/compose.yaml logs -f"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
+
