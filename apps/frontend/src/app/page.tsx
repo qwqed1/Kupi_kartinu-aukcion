@@ -1,5 +1,5 @@
-import { AuctionScreen } from "@/components/auction-screen";
+import { AppSite } from "@/components/app-site";
 
-export default function Home() {
-  return <AuctionScreen />;
+export default function HomePage() {
+  return <AppSite />;
 }
