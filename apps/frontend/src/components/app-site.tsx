@@ -23,19 +23,21 @@ function getArtist(artwork: Artwork) { return artistForArtwork(artwork); }
 export function AppSite() {
   const pathname = usePathname();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [allLotsOpen, setAllLotsOpen] = useState(false);
   const [bidLotId, setBidLotId] = useState<string | null>(null);
   const openBid = (lotId: string) => { setPickerOpen(false); setBidLotId(lotId); };
   return <>
     <Header />
-    <main className={styles.main}>{renderRoute(pathname, openBid, () => setPickerOpen(true))}</main>
+    <main className={styles.main}>{renderRoute(pathname, openBid, () => setPickerOpen(true), () => setAllLotsOpen(true))}</main>
     <Footer />
     {pickerOpen && <LotPickerDialog onClose={() => setPickerOpen(false)} onSelect={openBid} />}
+    {allLotsOpen && <AllLotsDialog onClose={() => setAllLotsOpen(false)} onSelect={openBid} />}
     {bidLotId && <DeferredBidDialog lotId={bidLotId} onClose={() => setBidLotId(null)} />}
     <Toast />
   </>;
 }
 
-function renderRoute(path: string, openBid: (lotId: string) => void, openPicker: () => void) {
+function renderRoute(path: string, openBid: (lotId: string) => void, openPicker: () => void, openAllLots: () => void) {
   const parts = path.split("/").filter(Boolean);
   if (parts.length === 0) return <HomePage />;
   if (parts[0] === "catalog") return <CatalogPage />;
@@ -44,7 +46,7 @@ function renderRoute(path: string, openBid: (lotId: string) => void, openPicker:
   if (parts[0] === "artists") return parts[1] ? <ArtistPage slug={parts[1]} /> : <ArtistsPage />;
   if (parts[0] === "auctions") {
     if (!parts[1]) return <AuctionsPage />;
-    if (parts[2] === "live") return <LiveAuctionPage slug={parts[1]} openBid={openBid} openPicker={openPicker} />;
+    if (parts[2] === "live") return <LiveAuctionPage slug={parts[1]} openBid={openBid} openPicker={openPicker} openAllLots={openAllLots} />;
     if (parts[2] === "register") return <AuctionRegistrationPage slug={parts[1]} />;
     return <AuctionPage slug={parts[1]} openBid={openBid} />;
   }
@@ -139,10 +141,10 @@ function AuctionsPage() { return <><PageTitle eyebrow="АУКЦИОНЫ" title="
 
 function AuctionPage({ slug, openBid }: { slug?: string; openBid: (lotId: string) => void }) { const { registrations, user } = useSite(); const auction = auctions.find((item) => item.slug === slug); if (!auction) return <TextPage title="Аукцион не найден" paragraphs={["Проверьте адрес страницы."]} />; const auctionLots = lotsForAuction(auction.id); const admitted = registrations.includes(auction.id); return <><section className={styles.auctionHero}><div><p className={auction.status === "live" ? styles.statusLive : auction.status === "upcoming" ? styles.statusUpcoming : styles.muted}>• {auction.status === "live" ? "Идёт сейчас" : auction.status === "upcoming" ? "До начала аукциона" : "Аукцион завершён"}</p><h1>{auction.title}</h1><p>{auction.startsAt}</p><p>{auction.description}</p>{auction.status === "live" ? <Link className={styles.buttonDark} href={`/auctions/${auction.slug}/live`}>Смотреть эфир</Link> : auction.status === "upcoming" ? <Link className={styles.buttonDark} href={`/auctions/${auction.slug}/register`}>{user && admitted ? "Допуск оформлен" : "Зарегистрироваться"}</Link> : null}</div><div><Image src={auction.coverSrc} alt={auction.title} fill sizes="(max-width: 720px) 100vw, 45vw" /></div></section><SectionHeading title="Лоты аукциона" href={`/auctions/${auction.slug}`} /><div className={styles.lotGrid}>{auctionLots.map((lot) => <LotCard key={lot.id} lot={lot} onBid={openBid} />)}</div></>; }
 
-function LiveAuctionPage({ slug, openBid, openPicker }: { slug?: string; openBid: (lotId: string) => void; openPicker: () => void }) {
+function LiveAuctionPage({ slug, openBid, openPicker, openAllLots }: { slug?: string; openBid: (lotId: string) => void; openPicker: () => void; openAllLots: () => void }) {
   const auction = auctions.find((item) => item.slug === slug) ?? auctions[0]; const auctionLots = lotsForAuction(auction.id); const currentLot = auctionLots.find((lot) => lot.state === "live") ?? auctionLots[0]; const upcoming = auctionLots.filter((lot) => lot.state === "upcoming"); const artwork = artworkForLot(currentLot)!; const artist = getArtist(artwork); const { showToast, deferredBids } = useSite();
   return <><div className={styles.breadcrumbs}><Link href="/auctions">Аукционы</Link><span>›</span><b>{auction.title}</b></div><section className={styles.liveLayout}>
-    <aside className={styles.liveQueue}><div className={styles.stream}><Image src="/figma-assets/auction-stream-clean.png" alt="Прямая трансляция ведущего аукциона" fill sizes="272px" /><div><button onClick={() => showToast("Управление звуком будет доступно в эфире.")}>⌁</button><button onClick={() => showToast("Полноэкранный режим будет доступен в эфире.")}>⛶</button></div></div><div className={styles.queueBody}><p className={styles.statusLive}>• Идёт сейчас</p><LotCard lot={currentLot} onBid={openBid} showAction={false} /><p className={styles.statusUpcoming}>• Следующие лоты ({upcoming.length})</p>{upcoming.map((lot) => <LotCard key={lot.id} lot={lot} onBid={openBid} />)}</div><button className={styles.queueMore} onClick={openPicker}>Показать все лоты <Icon>◉</Icon></button></aside>
+    <aside className={styles.liveQueue}><div className={styles.stream}><Image src="/figma-assets/auction-stream-clean.png" alt="Прямая трансляция ведущего аукциона" fill sizes="272px" /><div><button onClick={() => showToast("Управление звуком будет доступно в эфире.")}>⌁</button><button onClick={() => showToast("Полноэкранный режим будет доступен в эфире.")}>⛶</button></div></div><div className={styles.queueBody}><p className={styles.statusLive}>• Идёт сейчас</p><LotCard lot={currentLot} onBid={openBid} showAction={false} /><p className={styles.statusUpcoming}>• Следующие лоты ({upcoming.length})</p>{upcoming.map((lot) => <LotCard key={lot.id} lot={lot} onBid={openBid} />)}</div><button className={styles.queueMore} onClick={openAllLots}>Показать все лоты <Icon>◉</Icon></button></aside>
     <section className={styles.mobileStream} aria-label="Прямая трансляция"><div className={styles.stream}><Image src="/figma-assets/auction-stream-clean.png" alt="Прямая трансляция ведущего аукциона" fill sizes="100vw" /><div><button onClick={() => showToast("Управление звуком будет доступно в эфире.")}>⌁</button><button onClick={() => showToast("Полноэкранный режим будет доступен в эфире.")}>⛶</button></div></div></section>
     <article className={styles.liveArtwork}><div><Image src={artwork.imageSrc} alt={artwork.title} fill sizes="(max-width: 900px) 100vw, 630px" priority /></div><p>«{artwork.title}»</p><h1>{artist?.name}</h1><span>{artwork.dimensions} <i /> {artwork.medium} <i /> Россия <i /> {artwork.year}</span></article>
     <aside className={styles.liveSidebar}><section className={styles.bidPanel}><p className={styles.price}>{rub.format(currentLot.currentBid ?? currentLot.minimumPrice)}</p><p>Последняя ставка • #194</p><dl><div><dt>Минимальная стоимость</dt><dd>{rub.format(currentLot.minimumPrice)}</dd></div><div><dt>Минимальный шаг</dt><dd>{rub.format(currentLot.bidStep)}</dd></div></dl><LiveBidForm /><button className={styles.buttonLight} onClick={openPicker}>Сделать отложенную ставку</button><Link className={styles.buttonLight} href="/profile/deferred-bids">{Object.keys(deferredBids).length ? "Мои отложенные ставки" : "Отслеживать лоты"}</Link></section><section className={styles.chatPanel}><div><span>• Чат прямого эфира</span><span>83 участника</span></div><p><b>#851</b> Можно паузу?</p><p><b>#914</b> Всё слышно</p><form onSubmit={(event) => { event.preventDefault(); showToast("Чат появится с подключением прямого эфира."); }}><input placeholder="Сообщение" /><button aria-label="Отправить">→</button></form></section></aside>
@@ -176,14 +178,34 @@ function NewsPage() { return <><PageTitle eyebrow="НОВОСТИ" title="Ист
 function NewsArticlePage({ slug }: { slug?: string }) { const item = news.find((article) => article.slug === slug); if (!item) return <TextPage title="Материал не найден" paragraphs={["Проверьте адрес страницы."]} />; return <article className={styles.article}><p className={styles.eyebrow}>{item.date}</p><h1>{item.title}</h1><div><Image src={item.imageSrc} alt="" fill sizes="(max-width: 720px) 100vw, 720px" /></div><p>{item.excerpt}</p><p>На этой странице будут публиковаться анонсы, результаты торгов и разговоры с художниками. В демо-версии материал представлен кратко, чтобы показать редакционный шаблон страницы.</p><Link className={styles.textLink} href="/news">← Все новости</Link></article>; }
 function EmptyState({ title, text, href, label }: { title: string; text: string; href: string; label: string }) { return <section className={styles.empty}><h2>{title}</h2><p>{text}</p><Link className={styles.buttonDark} href={href}>{label}</Link></section>; }
 
-function Dialog({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+function Dialog({ title, children, onClose, variant }: { title: string; children: ReactNode; onClose: () => void; variant?: "allLots" }) {
   const dialogRef = useRef<HTMLElement>(null); const returnFocus = useRef<HTMLElement | null>(null);
   useEffect(() => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; document.body.style.overflow = "hidden"; const timer = window.setTimeout(() => dialogRef.current?.focus(), 0); const escape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); }; window.addEventListener("keydown", escape as unknown as (event: globalThis.KeyboardEvent) => void); return () => { window.clearTimeout(timer); document.body.style.overflow = ""; window.removeEventListener("keydown", escape as unknown as (event: globalThis.KeyboardEvent) => void); returnFocus.current?.focus(); }; }, [onClose]);
   const trap = (event: KeyboardEvent<HTMLElement>) => { if (event.key !== "Tab") return; const items = dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled])'); if (!items?.length) return; const first = items[0]; const last = items[items.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } };
-  return <div className={styles.overlay} onMouseDown={onClose}><section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onKeyDown={trap} onMouseDown={(event) => event.stopPropagation()}><header><h2>{title}</h2><button onClick={onClose} aria-label="Закрыть окно">×</button></header>{children}</section></div>;
+  return <div className={styles.overlay} onMouseDown={onClose}><section ref={dialogRef} className={`${styles.dialog} ${variant === "allLots" ? styles.allLotsDialog : ""}`} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onKeyDown={trap} onMouseDown={(event) => event.stopPropagation()}><header><h2>{title}</h2><button onClick={onClose} aria-label="Закрыть окно">×</button></header>{children}</section></div>;
 }
 
 function LotPickerDialog({ onClose, onSelect }: { onClose: () => void; onSelect: (lotId: string) => void }) { const upcoming = lots.filter((lot) => lot.state === "upcoming"); return <Dialog title="Выберите будущий лот" onClose={onClose}><p className={styles.dialogIntro}>Отложенная ставка доступна только до начала выбранного лота.</p><div className={styles.dialogLotGrid}>{upcoming.map((lot) => <LotCard key={lot.id} lot={lot} onBid={onSelect} />)}</div></Dialog>; }
+
+function AllLotsDialog({ onClose, onSelect }: { onClose: () => void; onSelect: (lotId: string) => void }) {
+  const current = lots.find((lot) => lot.state === "live");
+  const upcoming = lots.filter((lot) => lot.state === "upcoming");
+  const past = lots.filter((lot) => lot.state === "sold" || lot.state === "unsold");
+  const fill = (source: AuctionLot[], count: number) => Array.from({ length: count }, (_, index) => source[index % source.length]);
+  return <Dialog title="ВСЕ КАРТИНЫ" onClose={onClose} variant="allLots">
+    {current && <AllLotsSection label="Идёт сейчас" tone="live"><AllLotsTile lot={current} /></AllLotsSection>}
+    <AllLotsSection label="Следующие лоты" tone="next">{fill(upcoming, 6).map((lot, index) => <AllLotsTile key={`${lot.id}-${index}`} lot={lot} onSelect={onSelect} />)}</AllLotsSection>
+    <AllLotsSection label="Прошедшие лоты" tone="past">{fill(past, 6).map((lot, index) => <AllLotsTile key={`${lot.id}-${index}`} lot={lot} />)}</AllLotsSection>
+  </Dialog>;
+}
+
+function AllLotsSection({ label, tone, children }: { label: string; tone: "live" | "next" | "past"; children: ReactNode }) { return <section className={`${styles.allLotsSection} ${styles[`allLotsSection${tone[0].toUpperCase()}${tone.slice(1)}`]}`}><p>• {label}</p><div className={styles.allLotsGrid}>{children}</div></section>; }
+
+function AllLotsTile({ lot, onSelect }: { lot: AuctionLot; onSelect?: (lotId: string) => void }) {
+  const artwork = artworkForLot(lot)!; const artist = getArtist(artwork); const isUpcoming = lot.state === "upcoming";
+  const image = <Image src={artwork.imageSrc} alt={artwork.title} fill sizes="230px" />;
+  return <article className={styles.allLotsTile}>{isUpcoming ? <button className={styles.allLotsImageButton} onClick={() => onSelect?.(lot.id)} aria-label={`Отложенная ставка: ${artwork.title}`}>{image}</button> : <div className={styles.allLotsImage}>{image}</div>}{(lot.state === "sold" || lot.state === "unsold") && <div className={styles.allLotsStatus}><span>{lot.state === "sold" ? "Продано" : "НЕ ПРОДАНА"}</span>{lot.state === "sold" && <b>{rub.format(lot.currentBid ?? 0)}</b>}</div>}<p>{artist?.name}</p><h3>{artwork.title}</h3></article>;
+}
 
 function DeferredBidDialog({ lotId, onClose }: { lotId: string; onClose: () => void }) {
   const lot = byId(lots, lotId); const { user, registrations, signIn, registerForAuction, deferredBids, saveDeferredBid, cancelDeferredBid } = useSite(); const [amount, setAmount] = useState(""); const [success, setSuccess] = useState(false);
