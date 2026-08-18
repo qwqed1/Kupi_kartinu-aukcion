@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, type ReactNode, useState } from "react";
+import { FormEvent, type ReactNode, useEffect, useState } from "react";
 import styles from "./auction-screen.module.css";
 
 const navigation = ["Каталог", "Художники", "Аукционы", "Контакты", "Услуги", "Новости"];
@@ -22,9 +22,12 @@ function Icon({ name, size = 24 }: { name: IconName; size?: number }) {
 }
 
 export function AuctionScreen() {
+  const [secondsToStart, setSecondsToStart] = useState(15);
+  const [isDeferredOpen, setDeferredOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [tracked, setTracked] = useState(false);
   const [bid, setBid] = useState("");
+  const [message, setMessage] = useState("");
   const [muted, setMuted] = useState(false);
   const [isLotsOpen, setLotsOpen] = useState(false);
   const showPlaceholder = (label: string) => setNotice(`${label} — раздел скоро появится.`);
@@ -32,6 +35,14 @@ export function AuctionScreen() {
     event.preventDefault();
     setNotice(bid ? `Ставка ${bid} ₽ подготовлена. Подключение к аукциону появится позже.` : "Введите сумму ставки.");
   };
+
+  useEffect(() => {
+    if (secondsToStart === 0) return;
+    const timer = window.setTimeout(() => setSecondsToStart((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [secondsToStart]);
+
+  if (secondsToStart > 0) return <AuctionCountdown seconds={secondsToStart} isDeferredOpen={isDeferredOpen} onOpenDeferred={() => setDeferredOpen(true)} onCloseDeferred={() => setDeferredOpen(false)} />;
 
   return <main className={styles.page}>
     <header className={styles.header}>
@@ -43,18 +54,40 @@ export function AuctionScreen() {
     <section className={styles.auctionGrid} aria-label="Онлайн-аукцион">
       <aside className={styles.queue}>
         <div className={styles.stream}><Image src="/figma-assets/auction-stream-clean.png" alt="Прямая трансляция ведущего аукциона" width={272} height={177} priority /><div className={styles.streamControls}><button aria-label={muted ? "Включить звук" : "Выключить звук"} onClick={() => setMuted(!muted)}><Icon name="volume" size={24} /></button><span className={styles.volumeLine} /><button aria-label="Развернуть видео" onClick={() => showPlaceholder("Полноэкранный режим")}><Icon name="expand" size={24} /></button></div></div>
-        <div className={styles.queueBody}><p className={styles.liveMark}>• Идёт сейчас</p><article className={styles.queueLot}><div className={styles.queueImage}><Image src="/figma-assets/upcoming-lot.jpg" alt="Закатное небо" fill sizes="194px" /></div><p>Губик Иван Никол</p><h2>ЗАКАТНОЕ НЕБО<br />КАКОЕ ОНО КРАСИВОЕ</h2></article><p className={styles.nextLots}>• Следующие лоты <span>(63)</span></p><article className={styles.queueLot}><div className={styles.queueImage}><Image src="/figma-assets/upcoming-lot.jpg" alt="Следующий лот" fill sizes="194px" /></div></article></div>
+        <div className={styles.queueBody}><p className={styles.liveMark}>• Идёт сейчас</p><article className={styles.queueLot}><div className={styles.queueImage}><Image src="/figma-assets/upcoming-lot.jpg" alt="Закатное небо" fill sizes="194px" /></div><p>Губик Иван Никол</p><h2>ЗАКАТНОЕ НЕБО<br />КАКОЕ ОНО КРАСИВОЕ</h2></article><p className={styles.nextLots}>• Следующие лоты <span>(63)</span></p><button type="button" className={`${styles.queueLot} ${styles.futureLot}`} onClick={() => setDeferredOpen(true)} aria-label="Поставить отложенную ставку на следующий лот"><div className={styles.queueImage}><Image src="/figma-assets/upcoming-lot.jpg" alt="Следующий лот" fill sizes="194px" /></div></button></div>
         <button className={styles.showAll} onClick={() => setLotsOpen(true)}>Показать все <Icon name="eye" size={24} /></button>
       </aside>
       <article className={styles.lot}><div className={styles.artwork}><Image src="/figma-assets/current-lot.jpg" alt="Владимир Яковлев, Цветок на столе" fill sizes="(max-width: 850px) 100vw, 630px" priority /></div><div className={styles.lotCaption}><p>«Цветок на столе»</p><h1>ЯКОВЛЕВ ВЛАДИМИР<br />ИГОРЕВИЧ</h1><span>52×64 <i /> Бумага, тушь, кисть <i /> Россия <i /> 1894</span></div></article>
-      <aside className={styles.sidebar}><section className={styles.bidCard}><p className={styles.price}>250 000 ₽</p><p className={styles.lastBid}>Последняя ставка&nbsp; • &nbsp;#194</p><dl><div><dt>×&nbsp; Минимальная стоимость</dt><dd>300 000 ₽</dd></div><div><dt>Минимальный шаг</dt><dd>50 000 ₽</dd></div></dl><form onSubmit={placeBid}><div className={styles.bidInput}><input value={bid} onChange={(event) => setBid(event.target.value.replace(/[^0-9 ]/g, ""))} placeholder="Введите ставку" inputMode="numeric" aria-label="Сумма ставки" /><button type="submit" aria-label="Подать ставку"><Icon name="arrow" size={18} /></button></div><button type="button" className={styles.trackButton} onClick={() => setTracked(!tracked)}>{tracked ? "Отслеживается" : "Отслеживать"}</button></form></section><section className={styles.chatCard}><div className={styles.chatHeading}><span>• Чат прямого эфира</span><span>83 участника</span></div><div className={styles.message}><span>#851</span><time>18:42</time><p>Можно паузу?</p></div><div className={styles.message}><span>#914</span><time>19:02</time><p>Всё слышно</p></div><div className={styles.messageInput}><span>Сообщение</span><button aria-label="Отправить сообщение" onClick={() => showPlaceholder("Чат")}><Icon name="arrow" size={18} /></button></div></section></aside>
+      <aside className={styles.sidebar}><section className={styles.bidCard}><p className={styles.price}>250 000 ₽</p><p className={styles.lastBid}>Последняя ставка&nbsp; • &nbsp;#194</p><dl><div><dt>×&nbsp; Минимальная стоимость</dt><dd>300 000 ₽</dd></div><div><dt>Минимальный шаг</dt><dd>50 000 ₽</dd></div></dl><form onSubmit={placeBid}><div className={styles.bidInput}><input value={bid} onChange={(event) => setBid(event.target.value.replace(/[^0-9 ]/g, ""))} placeholder="Введите ставку" inputMode="numeric" aria-label="Сумма ставки" /><button type="submit" aria-label="Подать ставку"><Icon name="arrow" size={18} /></button></div><button type="button" className={styles.trackButton} onClick={() => setTracked(!tracked)}>{tracked ? "Отслеживается" : "Отслеживать"}</button></form></section><section className={styles.chatCard}><div className={styles.chatHeading}><span>• Чат прямого эфира</span><span>83 участника</span></div><div className={styles.message}><span>#851</span><time>18:42</time><p>Можно паузу?</p></div><div className={styles.message}><span>#914</span><time>19:02</time><p>Всё слышно</p></div><form className={styles.messageInput} onSubmit={(event) => { event.preventDefault(); showPlaceholder(message ? "Сообщение отправлено" : "Чат"); setMessage(""); }}><input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Сообщение" aria-label="Сообщение в чат" /><button type="submit" aria-label="Отправить сообщение"><Icon name="arrow" size={18} /></button></form></section></aside>
     </section>
-    {isLotsOpen && <LotsDialog onClose={() => setLotsOpen(false)} />}
+    {isLotsOpen && <LotsDialog onClose={() => setLotsOpen(false)} onOpenDeferred={() => setDeferredOpen(true)} />}
+    {isDeferredOpen && <DeferredBidDialog onClose={() => setDeferredOpen(false)} />}
     {notice && <div className={styles.notice} role="status"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Закрыть">×</button></div>}
   </main>;
 }
 
-function LotsDialog({ onClose }: { onClose: () => void }) {
+function AuctionCountdown({ seconds, isDeferredOpen, onOpenDeferred, onCloseDeferred }: { seconds: number; isDeferredOpen: boolean; onOpenDeferred: () => void; onCloseDeferred: () => void }) {
+  const lots = Array.from({ length: 8 }, (_, index) => index + 1);
+  const time = `00:${String(seconds).padStart(2, "0")}`;
+
+  return <main className={styles.page}>
+    <header className={styles.header}>
+      <div className={styles.logoButton}><Image src="/figma-assets/logo.svg" alt="KUPIT KARTINU.RU" width={172} height={43} priority /></div>
+      <nav className={styles.navigation} aria-label="Основная навигация">{navigation.map((item) => <span key={item}>{item}</span>)}</nav>
+      <div className={styles.headerActions}><div className={styles.search}><span>Андерграунд, море, лес...</span><Icon name="search" size={30} /></div><span><Icon name="bag" size={32} /></span><span><Icon name="heart" size={32} /></span><span><Icon name="user" size={32} /></span></div>
+    </header>
+    <div className={styles.countdownBreadcrumbs}><span>Аукционы</span><b>›</b><strong>Цветок на столе</strong></div>
+    <section className={styles.countdownContent} aria-label="Аукцион начнётся скоро">
+      <div className={styles.countdownBanner}>ДО НАЧАЛА АУКЦИОНА: <b>{time}</b><span aria-hidden="true">◴</span></div>
+      <aside className={styles.deferredInfo}><h1>ОБ ОТЛОЖЕННЫХ СТАВКАХ</h1><p>Вы можете поставить отложенную ставку до начала аукциона — просто нажмите на любую картину.</p><p>Отложенная ставка будет ставиться без вашего участия, пока вы не выиграете или пока не закончится выбранный баланс.</p><p>Её можно отменить только до начала аукциона или за пять лотов до выбранного лота</p></aside>
+      <p className={styles.countdownLotsTitle}>• Лоты участвующие в аукционе</p>
+      <div className={styles.countdownLots}>{lots.map((lot) => <button type="button" key={lot} className={styles.countdownLot} onClick={onOpenDeferred}><div><Image src="/figma-assets/current-lot.jpg" alt="Закатное небо какое оно красивое" fill sizes="(max-width: 640px) 45vw, 318px" /></div><p>Губик Иван Никол</p><h2>ЗАКАТНОЕ НЕБО КАКОЕ<br />ОНО КРАСИВОЕ</h2><span>52×64 • Бумага, тушь, кисть • Россия • 1894</span></button>)}</div>
+    </section>
+    {isDeferredOpen && <DeferredBidDialog onClose={onCloseDeferred} />}
+  </main>;
+}
+
+function LotsDialog({ onClose, onOpenDeferred }: { onClose: () => void; onOpenDeferred: () => void }) {
   const upcomingLots = Array.from({ length: 6 }, (_, index) => index + 1);
   const pastLots = Array.from({ length: 6 }, (_, index) => index + 1);
 
@@ -62,7 +95,7 @@ function LotsDialog({ onClose }: { onClose: () => void }) {
     <section className={styles.lotsDialog} role="dialog" aria-modal="true" aria-labelledby="all-lots-title" onMouseDown={(event) => event.stopPropagation()}>
       <div className={styles.dialogHeader}><h2 id="all-lots-title">ВСЕ КАРТИНЫ</h2><button onClick={onClose} aria-label="Закрыть окно">×</button></div>
       <LotsSection label="Идёт сейчас" tone="live"><LotTile /></LotsSection>
-      <LotsSection label="Следующие лоты" tone="next">{upcomingLots.map((lot) => <LotTile key={lot} />)}</LotsSection>
+      <LotsSection label="Следующие лоты" tone="next">{upcomingLots.map((lot) => <LotTile key={lot} onOpenDeferred={onOpenDeferred} />)}</LotsSection>
       <LotsSection label="Прошедшие лоты" tone="past">{pastLots.map((lot) => <LotTile key={lot} status={lot === 3 ? "НЕ ПРОДАНА" : "Продано"} />)}</LotsSection>
     </section>
   </div>;
@@ -72,6 +105,18 @@ function LotsSection({ children, label, tone }: { children: ReactNode; label: st
   return <section className={`${styles.lotsSection} ${styles[`lotsSection${tone[0].toUpperCase()}${tone.slice(1)}`]}`}><p>• {label}</p><div className={styles.lotsGrid}>{children}</div></section>;
 }
 
-function LotTile({ status }: { status?: string }) {
-  return <article className={styles.lotTile}><div className={styles.lotTileImage}><Image src="/figma-assets/upcoming-lot.jpg" alt="Закатное небо какое оно красивое" fill sizes="230px" /></div>{status && <div className={styles.lotStatus}><span>{status}</span>{status === "Продано" && <b>450 000 ₽</b>}</div>}<p>Губик Иван Никол</p><h3>ЗАКАТНОЕ НЕБО КАКОЕ<br />ОНО КРАСИВОЕ</h3></article>;
+function LotTile({ status, onOpenDeferred }: { status?: string; onOpenDeferred?: () => void }) {
+  const content = <><div className={styles.lotTileImage}><Image src="/figma-assets/upcoming-lot.jpg" alt="Закатное небо какое оно красивое" fill sizes="230px" /></div>{status && <div className={styles.lotStatus}><span>{status}</span>{status === "Продано" && <b>450 000 ₽</b>}</div>}<p>Губик Иван Никол</p><h3>ЗАКАТНОЕ НЕБО КАКОЕ<br />ОНО КРАСИВОЕ</h3></>;
+  return onOpenDeferred ? <button type="button" className={`${styles.lotTile} ${styles.futureLot}`} onClick={onOpenDeferred}>{content}</button> : <article className={styles.lotTile}>{content}</article>;
+}
+
+function DeferredBidDialog({ onClose }: { onClose: () => void }) {
+  const [amount, setAmount] = useState("");
+  return <div className={styles.deferredOverlay} role="presentation" onMouseDown={onClose}>
+    <section className={styles.deferredDialog} role="dialog" aria-modal="true" aria-labelledby="deferred-bid-title" onMouseDown={(event) => event.stopPropagation()}>
+      <header><h2 id="deferred-bid-title">ОТЛОЖЕННАЯ СТАВКА</h2><button type="button" onClick={onClose} aria-label="Закрыть окно">×</button></header>
+      <article className={styles.deferredLot}><div><Image src="/figma-assets/current-lot.jpg" alt="Закатное небо какое оно красивое" fill sizes="336px" /></div><p>Губик Иван Никол</p><h3>ЗАКАТНОЕ НЕБО КАКОЕ<br />ОНО КРАСИВОЕ</h3><span>52×64 • Бумага, тушь, кисть • Россия • 1894</span></article>
+      <form className={styles.deferredForm} onSubmit={(event) => { event.preventDefault(); onClose(); }}><dl><div><dt>Минимальная стоимость</dt><dd>300 000 ₽</dd></div><div><dt>Минимальный шаг</dt><dd>50 000 ₽</dd></div></dl><input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9 ]/g, ""))} placeholder="Сумма отложенной ставки" inputMode="numeric" aria-label="Сумма отложенной ставки" /><button type="submit">Сохранить</button></form>
+    </section>
+  </div>;
 }
